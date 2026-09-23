@@ -60,7 +60,7 @@ Claude APIを使って日本語で返信するボットです。
 - `MAX_REPLIES_PER_HOUR` で1時間あたりの返信数に上限を設定(既定30件)。
 - `MAX_OUTPUT_TOKENS` で1回の返信の最大トークン数を抑制(既定400)。
 - ローカルアカウント限定にすることで、不特定多数からの呼び出しを防止。
-- 必要に応じて、Anthropic ConsoleでこのAピキーに月間利用上限(spending limit)を
+- 必要に応じて、Anthropic ConsoleでこのAPIキーに月間利用上限(spending limit)を
   設定しておくと、想定外の高額請求を防げます。
 
 ## 注意点
