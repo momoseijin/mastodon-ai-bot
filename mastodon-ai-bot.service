@@ -1,0 +1,22 @@
+[Unit]
+Description=Mastodon AI Reply Bot (Claude API)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# 実際のインストール先パスに合わせて変更してください
+WorkingDirectory=/opt/mastodon-ai-bot
+EnvironmentFile=/opt/mastodon-ai-bot/.env
+ExecStart=/opt/mastodon-ai-bot/venv/bin/python /opt/mastodon-ai-bot/bot.py
+Restart=on-failure
+RestartSec=5
+User=mastodon-bot
+Group=mastodon-bot
+
+# 軽い保護設定
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

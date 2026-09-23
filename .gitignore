@@ -1,0 +1,19 @@
+# 環境変数・秘密情報(絶対にコミットしない)
+.env
+*.env
+!.env.example
+
+# Python
+venv/
+env/
+__pycache__/
+*.pyc
+
+# ログ
+*.log
+logs/
+
+# OS/エディタ関連
+.DS_Store
+.vscode/
+.idea/
