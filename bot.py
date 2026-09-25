@@ -13,6 +13,7 @@ from collections import deque
 
 from dotenv import load_dotenv
 from mastodon import Mastodon, StreamListener
+from mastodon.errors import MastodonNetworkError
 from anthropic import Anthropic
 
 load_dotenv()
@@ -45,6 +46,7 @@ log = logging.getLogger("mastodon-ai-bot")
 mastodon = Mastodon(
     access_token=MASTODON_ACCESS_TOKEN,
     api_base_url=MASTODON_API_BASE_URL,
+    request_timeout=20,  # 既定300秒だと自サーバ側が重い時にプロセス全体が長時間ブロックされるため短縮
 )
 claude = Anthropic(api_key=ANTHROPIC_API_KEY)
 
@@ -127,12 +129,29 @@ class MentionListener(StreamListener):
             if visibility == "public":
                 visibility = "unlisted"  # 返信は公開タイムラインを荒らさないよう控えめに
 
-            mastodon.status_post(
-                mention + reply_text,
-                in_reply_to_id=status["id"],
-                visibility=visibility,
-            )
-            log.info("返信投稿完了 (in_reply_to=%s)", status["id"])
+            # 自サーバの一時的な遅延・タイムアウトに備えて数回だけ短くリトライする
+            max_attempts = 3
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    mastodon.status_post(
+                        mention + reply_text,
+                        in_reply_to_id=status["id"],
+                        visibility=visibility,
+                    )
+                    log.info("返信投稿完了 (in_reply_to=%s)", status["id"])
+                    break
+                except MastodonNetworkError:
+                    if attempt == max_attempts:
+                        log.error(
+                            "投稿に%d回失敗したため諦めます (in_reply_to=%s, 宛先=@%s)",
+                            max_attempts, status["id"], acct,
+                        )
+                    else:
+                        log.warning(
+                            "投稿失敗、再試行します (%d/%d, in_reply_to=%s)",
+                            attempt, max_attempts, status["id"],
+                        )
+                        time.sleep(3)
 
         except Exception:
             log.exception("通知処理中にエラーが発生しました")
