@@ -18,15 +18,23 @@ Claude APIを使って日本語で返信するボットです。
    そのアカウントでログインした状態で、設定 → 開発 → 新規アプリ から
    スコープ `read` `write` を持つアプリを作成し、アクセストークンを控える。
 
-3. **サーバへ配置**
+3. **サーバへ配置(Gitを使う場合)**
+   先にGitHub等にリポジトリを作成し、`bot.py` / `requirements.txt` /
+   `.env.example` / `mastodon-ai-bot.service` / `.gitignore` をpushしておく
+   (`.env`自体はコミットしないこと)。
+
    ```bash
    sudo mkdir -p /opt/mastodon-ai-bot
-   sudo cp bot.py requirements.txt .env.example /opt/mastodon-ai-bot/
+   sudo chown "$USER":"$USER" /opt/mastodon-ai-bot
+   git clone <あなたのリポジトリURL> /opt/mastodon-ai-bot
    cd /opt/mastodon-ai-bot
+
    python3 -m venv venv
    ./venv/bin/pip install -r requirements.txt
    cp .env.example .env
    ```
+   Privateリポジトリの場合は、事前にSSH鍵またはPersonal Access Tokenの設定が
+   必要です。
 
 4. **`.env` を編集**
    `MASTODON_ACCESS_TOKEN` / `MASTODON_API_BASE_URL` / `MASTODON_DOMAIN` /
@@ -37,14 +45,48 @@ Claude APIを使って日本語で返信するボットです。
    sudo useradd -r -s /usr/sbin/nologin mastodon-bot
    sudo chown -R mastodon-bot:mastodon-bot /opt/mastodon-ai-bot
    ```
+   以降、このユーザーでgit操作を行う場合は、Privateリポジトリ用の認証情報
+   (SSH鍵やトークン)も`mastodon-bot`ユーザーから使える場所に配置してください。
 
 6. **systemdサービスとして登録**
    ```bash
    sudo cp mastodon-ai-bot.service /etc/systemd/system/
    sudo systemctl daemon-reload
    sudo systemctl enable --now mastodon-ai-bot
-   sudo journalctl -u mastodon-ai-bot -f
+   sudo journalctl -u mastodon-ai-bot -f  # 任意: 正常に起動したか確認したい場合のみ。Ctrl+Cで終了
    ```
+
+## 更新手順
+
+コードを修正した場合は、手元でコミット・プッシュしたうえで、サーバ側でpullして
+反映します。
+
+```bash
+sudo systemctl stop mastodon-ai-bot
+
+cd /opt/mastodon-ai-bot
+sudo -u mastodon-bot git pull
+
+# requirements.txt に変更があった場合は依存関係も更新
+sudo -u mastodon-bot ./venv/bin/pip install -r requirements.txt
+
+sudo systemctl start mastodon-ai-bot
+sudo journalctl -u mastodon-ai-bot -f  # 任意: 反映後の動作確認用。Ctrl+Cで終了
+```
+
+- `journalctl -f` は反映後にログをリアルタイムで確認したい場合だけの任意の手順です。
+  実行しなくても起動・反映自体には影響しません。省略する場合は代わりに
+  `sudo systemctl status mastodon-ai-bot` で `active (running)` になっているかだけ
+  確認すると手軽です。
+- `.env` は `.gitignore` で除外されているため、`git pull` しても上書きされません。
+- `mastodon-ai-bot.service` を変更した場合は、`pip install` の代わりに
+  以下を実行してください。
+  ```bash
+  sudo cp mastodon-ai-bot.service /etc/systemd/system/
+  sudo systemctl daemon-reload
+  ```
+- 反映後は `sudo -u mastodon-bot git log -1` で、意図した変更が取り込まれて
+  いるか確認すると安心です。
 
 ## 仕組み
 - Mastodonのユーザーストリーム(`stream_user`)でメンション通知を常時受信します。
@@ -60,7 +102,7 @@ Claude APIを使って日本語で返信するボットです。
 - `MAX_REPLIES_PER_HOUR` で1時間あたりの返信数に上限を設定(既定30件)。
 - `MAX_OUTPUT_TOKENS` で1回の返信の最大トークン数を抑制(既定400)。
 - ローカルアカウント限定にすることで、不特定多数からの呼び出しを防止。
-- 必要に応じて、Anthropic ConsoleでこのAPIキーに月間利用上限(spending limit)を
+- 必要に応じて、Anthropic ConsoleでこのAピキーに月間利用上限(spending limit)を
   設定しておくと、想定外の高額請求を防げます。
 
 ## 注意点
