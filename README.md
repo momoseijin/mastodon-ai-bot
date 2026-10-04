@@ -12,13 +12,16 @@ Claude APIを使って日本語で返信するボットです。
 ## セットアップ手順
 
 1. **Botを設置するサーバで、Botアカウントの作成**
+
    自サーバ上に専用のアカウント(例: `@assistant`)を新規作成する。
 
-2. **利用するMastoonにBot用アカウントを作成し、アプリ登録とアクセストークン発行**
+2. **利用するMastodonにBot用アカウントを作成し、アプリ登録とアクセストークン発行**
+
    そのアカウントでログインした状態で、設定 → 開発 → 新規アプリ から
    スコープ `read` `write` を持つアプリを作成し、アクセストークンを控える。
 
 3. **Botを設置するサーバへ配置(Gitを使う場合)**
+
    先にGitHub等にリポジトリを作成し、`bot.py` / `requirements.txt` /
    `.env.example` / `mastodon-ai-bot.service` / `.gitignore` をpushしておく
    (`.env`自体はコミットしないこと)。
@@ -33,22 +36,27 @@ Claude APIを使って日本語で返信するボットです。
    ./venv/bin/pip install -r requirements.txt
    cp .env.example .env
    ```
+
    Privateリポジトリの場合は、事前にSSH鍵またはPersonal Access Tokenの設定が
    必要です。
 
 4. **`.env` を編集**
+
    `MASTODON_ACCESS_TOKEN` / `MASTODON_API_BASE_URL` / `MASTODON_DOMAIN` /
    `ANTHROPIC_API_KEY` を実際の値に書き換える。
 
 5. **専用ユーザーの作成(任意だが推奨)**
+
    ```bash
    sudo useradd -r -s /usr/sbin/nologin mastodon-bot
    sudo chown -R mastodon-bot:mastodon-bot /opt/mastodon-ai-bot
    ```
+
    以降、このユーザーでgit操作を行う場合は、Privateリポジトリ用の認証情報
    (SSH鍵やトークン)も`mastodon-bot`ユーザーから使える場所に配置してください。
 
 6. **systemdサービスとして登録**
+
    ```bash
    sudo cp mastodon-ai-bot.service /etc/systemd/system/
    sudo systemctl daemon-reload
