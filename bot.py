@@ -23,7 +23,7 @@ MASTODON_API_BASE_URL = os.environ["MASTODON_API_BASE_URL"]  # 例: https://your
 MASTODON_ACCESS_TOKEN = os.environ["MASTODON_ACCESS_TOKEN"]
 MASTODON_DOMAIN = os.environ["MASTODON_DOMAIN"]  # 例: your-domain.example (acctのドメイン比較用)
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
-CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-haiku-4-5-20251001")
+CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-haiku-5-5")
 
 # コスト・スパム対策: 1時間あたりの最大返信数
 MAX_REPLIES_PER_HOUR = int(os.environ.get("MAX_REPLIES_PER_HOUR", "30"))
