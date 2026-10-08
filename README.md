@@ -105,12 +105,12 @@ sudo journalctl -u mastodon-ai-bot -f  # 任意: 反映後の動作確認用。C
 - 生成された返信を、元の投稿への返信(`in_reply_to_id`)として投稿します。
 
 ## コストを抑えるための工夫
-- デフォルトモデルは `claude-haiku-4-5-20251001`(2026年9月時点で
-  入力$1/出力$5 per 1M tokens と、Claudeのモデルの中で最も低コスト)。
+- デフォルトモデルは `claude-haiku-5-5`(2026年10月時点で
+  入力$0.1/出力$0.5 per 1M tokens と、Claudeのモデルの中で最も低コスト)。
 - `MAX_REPLIES_PER_HOUR` で1時間あたりの返信数に上限を設定(既定30件)。
 - `MAX_OUTPUT_TOKENS` で1回の返信の最大トークン数を抑制(既定400)。
 - ローカルアカウント限定にすることで、不特定多数からの呼び出しを防止。
-- 必要に応じて、Anthropic ConsoleでこのAピキーに月間利用上限(spending limit)を
+- 必要に応じて、Anthropic ConsoleでこのAPIキーに月間利用上限(spending limit)を
   設定しておくと、想定外の高額請求を防げます。
 
 ## 注意点
