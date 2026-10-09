@@ -1,26 +1,46 @@
 # Mastodon AI 返信ボット (Claude API版)
 
-自サーバ(your-domain.example)のアカウントからのメンションにのみ、
+自サーバ(例: `your-domain.example`)のアカウントからのメンションにのみ、
 Claude APIを使って日本語で返信するボットです。
+電車・バスの乗り換え案内と、Web検索(任意)にも対応しています。
 
 ## 構成
+
 - `bot.py` : 本体スクリプト
 - `requirements.txt` : 依存パッケージ
-- `.env.example` : 設定ファイルの雛形
+- `.env.example`(ダウンロード後 `env.example.txt` → `.env.example` に
+  リネームしてください) : 設定ファイルの雛形
 - `mastodon-ai-bot.service` : systemdサービス定義
+- `.gitignore`(ダウンロード後 `gitignore.txt` → `.gitignore` にリネーム)
+
+## 機能
+
+- **ローカル限定**: 自サーバのアカウントからのメンションにのみ反応し、
+  他サーバのユーザーからのメンションは無視します。
+- **電車・バスの乗り換え案内**: 「渋谷から新宿までの行き方は?」のように聞くと、
+  無料・認証不要の乗り換え案内API(`api.transit.ls8h.com`)を使って実際の経路・
+  所要時間・運賃を調べて回答します。追加の契約や課金は不要です。
+- **Web検索(任意・既定オフ)**: 最新のニュースなど、学習データだけでは
+  答えられない話題について、Claudeが必要と判断した場合にWeb検索を行ってから
+  回答します。検索実行ごとに別途課金が発生するため、`.env`で明示的に
+  有効化した場合のみ使われます。
+- **コスト・スパム対策**: 1時間あたりの返信数上限、1返信あたりの出力トークン数
+  上限、Web検索の実行回数上限を、それぞれ`.env`で設定できます。
+- **自サーバの一時的な応答遅延への耐性**: 投稿リクエストがタイムアウトした場合、
+  短い間隔で数回リトライします。
 
 ## セットアップ手順
 
-1. **Botを設置するサーバで、Botアカウントの作成**
+1. **Botアカウントの作成**
 
    自サーバ上に専用のアカウント(例: `@assistant`)を新規作成する。
 
-2. **利用するMastodonにBot用アカウントを作成し、アプリ登録とアクセストークン発行**
+2. **アプリ登録とアクセストークン発行**
 
    そのアカウントでログインした状態で、設定 → 開発 → 新規アプリ から
    スコープ `read` `write` を持つアプリを作成し、アクセストークンを控える。
 
-3. **Botを設置するサーバへ配置(Gitを使う場合)**
+3. **サーバへ配置(Gitを使う場合)**
 
    先にGitHub等にリポジトリを作成し、`bot.py` / `requirements.txt` /
    `.env.example` / `mastodon-ai-bot.service` / `.gitignore` をpushしておく
@@ -43,7 +63,8 @@ Claude APIを使って日本語で返信するボットです。
 4. **`.env` を編集**
 
    `MASTODON_ACCESS_TOKEN` / `MASTODON_API_BASE_URL` / `MASTODON_DOMAIN` /
-   `ANTHROPIC_API_KEY` を実際の値に書き換える。
+   `ANTHROPIC_API_KEY` を実際の値に書き換える。Web検索を使いたい場合は
+   `ENABLE_WEB_SEARCH=true` に変更する(詳細は後述)。
 
 5. **専用ユーザーの作成(任意だが推奨)**
 
@@ -63,6 +84,33 @@ Claude APIを使って日本語で返信するボットです。
    sudo systemctl enable --now mastodon-ai-bot
    sudo journalctl -u mastodon-ai-bot -f  # 任意: 正常に起動したか確認したい場合のみ。Ctrl+Cで終了
    ```
+
+## 設定項目(`.env`)
+
+| 変数名 | 必須 | 既定値 | 説明 |
+|---|---|---|---|
+| `MASTODON_ACCESS_TOKEN` | ○ | - | Bot用アカウントのアクセストークン |
+| `MASTODON_API_BASE_URL` | ○ | - | 自サーバのベースURL |
+| `MASTODON_DOMAIN` | ○ | - | 自サーバのドメイン(ローカルアカウント判定用) |
+| `ANTHROPIC_API_KEY` | ○ | - | Anthropic ConsoleのAPIキー |
+| `CLAUDE_MODEL` | - | `claude-haiku-4-5-20251001` | 使用するモデル |
+| `MAX_REPLIES_PER_HOUR` | - | `30` | 1時間あたりの最大返信数 |
+| `MAX_OUTPUT_TOKENS` | - | `400` | 1返信あたりの最大出力トークン数 |
+| `ENABLE_WEB_SEARCH` | - | `false` | Web検索ツールを有効にするか |
+| `WEB_SEARCH_MAX_USES` | - | `2` | Web検索を有効にした場合の、1返信あたりの検索回数上限 |
+
+## Web検索について
+
+- Web検索を使うには別契約は不要です。同じAnthropic APIキーのまま、
+  `.env`で`ENABLE_WEB_SEARCH=true`に設定するだけで有効になります。
+- 通常のトークン課金に加えて、**検索を実行した回数分だけ追加の課金**が
+  発生します。`WEB_SEARCH_MAX_USES`で1回の返信あたりの検索回数に
+  上限をかけられますが、最新の単価は念のため以下で確認してください。
+  `https://platform.claude.com/docs/en/about-claude/pricing`
+- 雑談や一般知識の質問では検索は使われず、Claudeが「最新情報が必要」と
+  判断した場合のみ発動するため、常に課金されるわけではありません。
+- コストが気になる場合は、既定の`false`のままで問題ありません(乗り換え案内
+  機能はWeb検索とは別物で、こちらは追加課金なしで常に利用できます)。
 
 ## 更新手順
 
@@ -87,6 +135,8 @@ sudo journalctl -u mastodon-ai-bot -f  # 任意: 反映後の動作確認用。C
   `sudo systemctl status mastodon-ai-bot` で `active (running)` になっているかだけ
   確認すると手軽です。
 - `.env` は `.gitignore` で除外されているため、`git pull` しても上書きされません。
+- `.env`に新しい設定項目(`ENABLE_WEB_SEARCH`など)を追加した場合は、
+  既存の`.env`にも手動で追記してください(`git pull`では更新されません)。
 - `mastodon-ai-bot.service` を変更した場合は、`pip install` の代わりに
   以下を実行してください。
   ```bash
@@ -96,28 +146,12 @@ sudo journalctl -u mastodon-ai-bot -f  # 任意: 反映後の動作確認用。C
 - 反映後は `sudo -u mastodon-bot git log -1` で、意図した変更が取り込まれて
   いるか確認すると安心です。
 
-## 仕組み
-- Mastodonのユーザーストリーム(`stream_user`)でメンション通知を常時受信します。
-- 通知元アカウントの `acct` にドメインが含まれない、または
-  `MASTODON_DOMAIN` と一致する場合のみ「ローカルアカウント」と判定し処理します
-  (他サーバのユーザーからのメンションは無視されます)。
-- 本文からHTMLタグとメンション部分を除去し、Claude APIに渡します。
-- 生成された返信を、元の投稿への返信(`in_reply_to_id`)として投稿します。
-
-## コストを抑えるための工夫
-- デフォルトモデルは `claude-haiku-5-5`(2026年10月時点で
-  入力$0.1/出力$0.5 per 1M tokens と、Claudeのモデルの中で最も低コスト)。
-- `MAX_REPLIES_PER_HOUR` で1時間あたりの返信数に上限を設定(既定30件)。
-- `MAX_OUTPUT_TOKENS` で1回の返信の最大トークン数を抑制(既定400)。
-- ローカルアカウント限定にすることで、不特定多数からの呼び出しを防止。
-- 必要に応じて、Anthropic ConsoleでこのAPIキーに月間利用上限(spending limit)を
-  設定しておくと、想定外の高額請求を防げます。
-
 ## 注意点
-- `MAX_OUTPUT_TOKENS` や `MAX_REPLIES_PER_HOUR` は運用しながら調整してください。
+
 - 返信の公開範囲(visibility)はデフォルトで `unlisted` にしています
   (元の投稿が `public` の場合)。全体公開のタイムラインを荒らさないための配慮です。
-  必要であれば `bot.py` 内の該当箇所を変更してください。
 - Claude APIの料金や利用可能なモデル名は変更される可能性があるため、
-  実際に導入する前に Anthropic の公式ドキュメント(platform.claude.com/docs)で
+  導入前に Anthropic の公式ドキュメント(`platform.claude.com/docs`)で
   最新情報を確認してください。
+- 乗り換え案内APIは非公式・読み取り専用のサービスです。運行情報の変更や
+  遅延などリアルタイム性が必要な場面では、あくまで参考情報として扱ってください。

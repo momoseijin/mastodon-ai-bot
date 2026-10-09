@@ -24,7 +24,7 @@ MASTODON_API_BASE_URL = os.environ["MASTODON_API_BASE_URL"]  # 例: https://your
 MASTODON_ACCESS_TOKEN = os.environ["MASTODON_ACCESS_TOKEN"]
 MASTODON_DOMAIN = os.environ["MASTODON_DOMAIN"]  # 例: your-domain.example (acctのドメイン比較用)
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
-CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-haiku-5-5")
+CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-haiku-4-5-20251001")
 
 # コスト・スパム対策: 1時間あたりの最大返信数
 MAX_REPLIES_PER_HOUR = int(os.environ.get("MAX_REPLIES_PER_HOUR", "30"))
@@ -37,6 +37,11 @@ TRANSIT_API_TIMEOUT = 10
 # Claudeがツールを呼び出してから最終回答を出すまでの最大往復回数
 MAX_TOOL_ITERATIONS = 4
 
+# Web検索ツール(コストが別途かかるため既定は無効。.envで有効化する)
+ENABLE_WEB_SEARCH = os.environ.get("ENABLE_WEB_SEARCH", "false").lower() == "true"
+# 1回の返信生成あたりの検索実行回数の上限(コスト対策)
+WEB_SEARCH_MAX_USES = int(os.environ.get("WEB_SEARCH_MAX_USES", "2"))
+
 SYSTEM_PROMPT = (
     "あなたはMastodonサーバ上で動作するAIアシスタントアカウントです。"
     "日本語で、簡潔かつ丁寧に返信してください。"
@@ -45,6 +50,13 @@ SYSTEM_PROMPT = (
     "電車やバスの乗り換え・経路について聞かれた場合は、"
     "search_transit_routeツールを使って実際の経路情報を調べてから回答してください。"
     "駅名があいまいで候補が複数ある場合は、ツールの結果をもとに一番自然な候補を選んで構いません。"
+    + (
+        "最新のニュースや現在の状況など、学習データだけでは答えられない話題を"
+        "聞かれた場合は、web_searchツールを使って調べてから回答してください。"
+        "一般知識や雑談など検索が不要な話題では、無駄に検索しないでください。"
+        if ENABLE_WEB_SEARCH
+        else ""
+    )
 )
 
 TRANSIT_TOOL = {
@@ -77,6 +89,16 @@ TRANSIT_TOOL = {
         "required": ["from_place", "to_place"],
     },
 }
+
+# web_searchはAnthropic側が自動で実行してくれるサーバ側ツール。
+# bot.py側で実行処理を書く必要はなく、tools一覧に加えるだけでよい。
+WEB_SEARCH_TOOL = {
+    "type": "web_search_20250305",
+    "name": "web_search",
+    "max_uses": WEB_SEARCH_MAX_USES,
+}
+
+TOOLS = [TRANSIT_TOOL] + ([WEB_SEARCH_TOOL] if ENABLE_WEB_SEARCH else [])
 
 logging.basicConfig(
     level=logging.INFO,
@@ -231,7 +253,7 @@ def ask_claude(prompt: str) -> str:
             model=CLAUDE_MODEL,
             max_tokens=MAX_OUTPUT_TOKENS,
             system=SYSTEM_PROMPT,
-            tools=[TRANSIT_TOOL],
+            tools=TOOLS,
             messages=messages,
         )
 
@@ -331,4 +353,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
