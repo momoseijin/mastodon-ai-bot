@@ -41,6 +41,9 @@ MAX_TOOL_ITERATIONS = 4
 ENABLE_WEB_SEARCH = os.environ.get("ENABLE_WEB_SEARCH", "false").lower() == "true"
 # 1回の返信生成あたりの検索実行回数の上限(コスト対策)
 WEB_SEARCH_MAX_USES = int(os.environ.get("WEB_SEARCH_MAX_USES", "2"))
+# Web検索を使うと、検索クエリ生成や検索後の回答も出力トークンに含まれるため、
+# 有効時は最低でもこの値まで出力トークン上限を引き上げる(途中打ち切りで返信が空になるのを防ぐ)
+WEB_SEARCH_MIN_OUTPUT_TOKENS = 1024
 
 SYSTEM_PROMPT = (
     "あなたはMastodonサーバ上で動作するAIアシスタントアカウントです。"
@@ -247,19 +250,42 @@ def _execute_tool(name: str, tool_input: dict) -> str:
 
 def ask_claude(prompt: str) -> str:
     messages = [{"role": "user", "content": prompt}]
+    max_tokens = MAX_OUTPUT_TOKENS
+    if ENABLE_WEB_SEARCH:
+        max_tokens = max(max_tokens, WEB_SEARCH_MIN_OUTPUT_TOKENS)
 
     for _ in range(MAX_TOOL_ITERATIONS):
         response = claude.messages.create(
             model=CLAUDE_MODEL,
-            max_tokens=MAX_OUTPUT_TOKENS,
+            max_tokens=max_tokens,
             system=SYSTEM_PROMPT,
             tools=TOOLS,
             messages=messages,
         )
 
+        # 原因調査用: 停止理由・ブロックの種類・出力トークン数を記録する
+        log.info(
+            "Claude応答: stop_reason=%s, blocks=%s, output_tokens=%s",
+            response.stop_reason,
+            [block.type for block in response.content],
+            getattr(response.usage, "output_tokens", "?"),
+        )
+
+        # サーバ側ツール(Web検索)の処理が途中で一時停止した場合は、続きを再送して継続させる
+        if response.stop_reason == "pause_turn":
+            messages.append({"role": "assistant", "content": response.content})
+            continue
+
         if response.stop_reason != "tool_use":
             parts = [block.text for block in response.content if block.type == "text"]
-            return "\n".join(parts).strip()
+            text = "\n".join(parts).strip()
+            if not text:
+                log.warning(
+                    "Claudeの応答にテキストが含まれていません (stop_reason=%s)",
+                    response.stop_reason,
+                )
+                return "うまく回答をまとめられませんでした。もう一度試してみてください。"
+            return text
 
         # ツール呼び出しを実行し、結果を会話に追加してもう一度Claudeに投げる
         messages.append({"role": "assistant", "content": response.content})
