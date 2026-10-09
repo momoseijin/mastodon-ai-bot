@@ -93,7 +93,7 @@ Claude APIを使って日本語で返信するボットです。
 | `MASTODON_API_BASE_URL` | ○ | - | 自サーバのベースURL |
 | `MASTODON_DOMAIN` | ○ | - | 自サーバのドメイン(ローカルアカウント判定用) |
 | `ANTHROPIC_API_KEY` | ○ | - | Anthropic ConsoleのAPIキー |
-| `CLAUDE_MODEL` | - | `claude-haiku-4-5-20251001` | 使用するモデル |
+| `CLAUDE_MODEL` | - | `claude-haiku-5-5` | 使用するモデル |
 | `MAX_REPLIES_PER_HOUR` | - | `30` | 1時間あたりの最大返信数 |
 | `MAX_OUTPUT_TOKENS` | - | `400` | 1返信あたりの最大出力トークン数 |
 | `ENABLE_WEB_SEARCH` | - | `false` | Web検索ツールを有効にするか |
