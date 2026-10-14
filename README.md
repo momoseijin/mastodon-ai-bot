@@ -12,6 +12,7 @@ Claude APIを使って日本語で返信するボットです。
   リネームしてください) : 設定ファイルの雛形
 - `mastodon-ai-bot.service` : systemdサービス定義
 - `.gitignore`(ダウンロード後 `gitignore.txt` → `.gitignore` にリネーム)
+- `LICENSE` : ライセンス(MIT)
 
 ## 機能
 
@@ -158,3 +159,8 @@ sudo journalctl -u mastodon-ai-bot -f  # 任意: 反映後の動作確認用。C
   最新情報を確認してください。
 - 乗り換え案内APIは非公式・読み取り専用のサービスです。運行情報の変更や
   遅延などリアルタイム性が必要な場面では、あくまで参考情報として扱ってください。
+
+## ライセンス
+
+このプロジェクトは [MIT License](LICENSE) のもとで公開されています。
+Copyright (c) 2026 Shiromiso
