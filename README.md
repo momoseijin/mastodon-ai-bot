@@ -163,4 +163,4 @@ sudo journalctl -u mastodon-ai-bot -f  # 任意: 反映後の動作確認用。C
 ## ライセンス
 
 このプロジェクトは [MIT License](LICENSE) のもとで公開されています。
-Copyright (c) 2026 Shiromiso
+Copyright (c) 2026 momoseijin
